@@ -3,7 +3,6 @@ package xyz.e3ndr.watercache.watchdog;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import lombok.SneakyThrows;
 import lombok.experimental.Accessors;
 import xyz.e3ndr.watercache.WaterCache;
@@ -22,17 +21,23 @@ public class Watchdog {
     private volatile boolean ticking = false;
     private boolean running = false;
     private Thread tickThread;
-    private @Setter WatchdogListener listener = new WatchdogListener() {
+    private WatchdogListener listener = new WatchdogListener() {
     };
+
+    public Watchdog setListener(@NonNull WatchdogListener listener) {
+        this.listener = listener;
+
+        return this;
+    }
 
     public void start() {
         if (!this.running) {
-            (new Thread() {
-                @Override
-                public void run() {
-                    startBlocking();
-                }
-            }).start();
+            Thread thread = (new Thread(() -> {
+                this.startBlocking();
+            }));
+
+            thread.setName("WaterCache Watchdog Async Thread");
+            thread.start();
         } else {
             throw new IllegalStateException("Watchdog is running.");
         }
@@ -82,7 +87,7 @@ public class Watchdog {
                     if (this.ticking) {
                         this.listener.onNotResponding((System.nanoTime() - start) * nanoToMillis);
                         try {
-                            // Wait on the cache if it is still ticking at this point, we do this on the tick thread inorder to guarantee no deadlocks.
+                            // Wait on the cache if it is still ticking at this point, we do this on the tick thread in order to guarantee no deadlocks.
                             synchronized (this.tickThread) {
                                 if (this.ticking) this.tickThread.wait();
                             }
@@ -111,10 +116,8 @@ public class Watchdog {
                 }
             }
 
-            // Tell the thread to wake up, since running == false it will exit.
-            synchronized (this.tickThread) {
-                this.tickThread.notifyAll();
-            }
+            // Tell the thread to wake up, since running is false it will exit.
+            this.wake();
         } else {
             throw new IllegalStateException("Watchdog is running.");
         }
@@ -132,7 +135,7 @@ public class Watchdog {
         this.running = false;
     }
 
-    public boolean checkAccess() {
+    public boolean isExecutingOnTickThread() {
         if ((this.tickThread == null) || !this.tickThread.isAlive()) {
             throw new IllegalStateException("Watchdog is not currently running.");
         } else {

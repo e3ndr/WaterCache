@@ -14,42 +14,33 @@ import xyz.e3ndr.watercache.cachable.DisposeReason;
 
 @Accessors(chain = true)
 public class WaterCache {
-    private long currentId = 1;
-    private Map<Long, Cachable> cache = new ConcurrentHashMap<>();
+    private Map<String, Cachable> cache = new ConcurrentHashMap<>();
     private boolean running = false;
-    private @Setter CacheEventListener listener = new CacheEventListener() {
-    };
-
-    private synchronized long getNextId() {
-        return this.currentId++;
-    }
+    private @Setter CacheEventListener listener;
 
     @SneakyThrows
-    public long register(@NonNull Cachable item) {
+    public void registerItem(String id, @NonNull Cachable item) {
         Field field = Cachable.class.getDeclaredField("id");
-        long id = getNextId();
 
         field.setAccessible(true);
         field.set(item, id);
         this.cache.put(id, item);
         item.onRegister(this);
-
-        return id;
     }
 
-    public Cachable getItem(long id) {
+    public Cachable getItemById(String id) {
         return this.cache.get(id);
     }
 
-    public boolean has(long id) {
+    public boolean hasItemId(String id) {
         return this.cache.containsKey(id);
     }
 
-    public boolean has(Cachable item) {
+    public boolean hasItem(Cachable item) {
         return this.cache.containsKey(item.getId());
     }
 
-    public boolean dispose(long id) {
+    public boolean removeItemById(String id) {
         Cachable item = this.cache.remove(id);
 
         if (item != null) {
@@ -60,7 +51,7 @@ public class WaterCache {
         }
     }
 
-    public boolean dispose(@NonNull Cachable item) {
+    public boolean removeItem(@NonNull Cachable item) {
         if (this.cache.remove(item.getId()) != null) {
             item.onDispose(DisposeReason.MANUAL);
             return true;
@@ -113,7 +104,9 @@ public class WaterCache {
                     item.tick();
                 }
             } catch (Exception e) {
-                this.listener.onTickException(new TickException(e));
+                if (this.listener != null) {
+                    this.listener.onTickException(new TickException(e));
+                }
             }
         }
     }

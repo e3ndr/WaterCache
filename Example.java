@@ -1,5 +1,7 @@
 package xyz.e3ndr.watercache;
 
+import java.util.UUID;
+
 import lombok.SneakyThrows;
 import xyz.e3ndr.watercache.cachable.Cachable;
 import xyz.e3ndr.watercache.watchdog.Watchdog;
@@ -22,7 +24,7 @@ public class Example {
             }
         };
 
-        cache.register(item);
+        cache.registerItem(UUID.randomUUID().toString(), item);
         wd.start();
     }
 

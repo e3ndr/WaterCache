@@ -8,7 +8,7 @@ import xyz.e3ndr.watercache.WaterCache;
 @Getter
 public abstract class Cachable {
     private final long timeCreated = System.currentTimeMillis();
-    private long id = -1;
+    private String id;
     protected long life = -1;
 
     public Cachable() {}
