@@ -5,7 +5,7 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.experimental.Accessors;
-import xyz.e3ndr.watercache.WaterCache;
+import xyz.e3ndr.watercache.Watchable;
 
 @Getter
 @RequiredArgsConstructor
@@ -14,7 +14,7 @@ public class Watchdog {
     private static final double nanoToMillis = 1e-6;
 
     // Constructor
-    private @NonNull WaterCache cache;
+    private @NonNull Watchable watchable;
     private final long tickInterval;
     private final long maxTickTime;
 
@@ -36,7 +36,7 @@ public class Watchdog {
                 this.startBlocking();
             }));
 
-            thread.setName("WaterCache Watchdog Async Thread");
+            thread.setName("Watchdog Async Thread");
             thread.start();
         } else {
             throw new IllegalStateException("Watchdog is running.");
@@ -45,15 +45,17 @@ public class Watchdog {
 
     public void startBlocking() {
         if (!this.running) {
-            this.cache.stop();
+            this.watchable.setup();
+
             this.running = true;
+
             this.tickThread = new Thread() {
                 @SneakyThrows
                 @Override
                 public void run() {
                     // While running, it will tick the cache, then set ticking to false, then notify all monitors and then wait itself.
                     while (running) {
-                        cache.tick();
+                        watchable.tick();
                         ticking = false;
 
                         synchronized (tickThread) {
@@ -89,7 +91,9 @@ public class Watchdog {
                         try {
                             // Wait on the cache if it is still ticking at this point, we do this on the tick thread in order to guarantee no deadlocks.
                             synchronized (this.tickThread) {
-                                if (this.ticking) this.tickThread.wait();
+                                if (this.ticking) {
+                                    this.tickThread.wait();
+                                }
                             }
                         } catch (InterruptedException e) {
                             this.listener.exception(new Exception("Unable to wait on tickthread", e));

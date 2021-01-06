@@ -13,7 +13,7 @@ import xyz.e3ndr.watercache.cachable.Cachable;
 import xyz.e3ndr.watercache.cachable.DisposeReason;
 
 @Accessors(chain = true)
-public class WaterCache {
+public class WaterCache implements Watchable {
     private Map<String, Cachable> cache = new ConcurrentHashMap<>();
     private boolean running = false;
     private @Setter CacheEventListener listener;
@@ -92,6 +92,7 @@ public class WaterCache {
         this.running = false;
     }
 
+    @Override
     public void tick() {
         // TODO better iteration. possibly an option for parallel threads?
         for (Cachable item : this.cache.values()) {
@@ -109,6 +110,11 @@ public class WaterCache {
                 }
             }
         }
+    }
+
+    @Override
+    public void setup() {
+        this.stop();
     }
 
 }
